@@ -1,9 +1,32 @@
 // Vercel Serverless Function: Synthesize Speech using Sarvam Bulbul TTS
 const DEFAULT_KEY = "sk_qaq8ho3m_ifhyEjbCvcWMUv8RgzKzk1qn";
 
+function sendJson(res, statusCode, data) {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "GET,OPTIONS,POST");
+  res.setHeader("Content-Type", "application/json");
+  if (typeof res.status === "function" && typeof res.json === "function") {
+    return res.status(statusCode).json(data);
+  }
+  res.statusCode = statusCode;
+  return res.end(JSON.stringify(data));
+}
+
+async function getBody(req) {
+  if (req.body && typeof req.body === "object") return req.body;
+  if (typeof req.body === "string") {
+    try { return JSON.parse(req.body); } catch (e) { return {}; }
+  }
+  return new Promise((resolve) => {
+    let bodyData = "";
+    req.on("data", chunk => { bodyData += chunk; });
+    req.on("end", () => {
+      try { resolve(JSON.parse(bodyData)); } catch (e) { resolve({}); }
+    });
+  });
+}
+
 export default async function handler(req, res) {
-  // Enable CORS
-  res.setHeader("Access-Control-Allow-Credentials", true);
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "GET,OPTIONS,POST");
   res.setHeader(
@@ -12,14 +35,16 @@ export default async function handler(req, res) {
   );
 
   if (req.method === "OPTIONS") {
-    return res.status(200).end();
+    res.statusCode = 200;
+    return res.end();
   }
 
   if (req.method !== "POST") {
-    return res.status(405).json({ error: "Method not allowed. Use POST." });
+    return sendJson(res, 405, { error: "Method not allowed. Use POST." });
   }
 
   try {
+    const body = await getBody(req);
     const {
       text,
       speaker = "rohan",
@@ -27,15 +52,15 @@ export default async function handler(req, res) {
       model = "bulbul:v3",
       pace = 1.0,
       apiKey
-    } = req.body || {};
+    } = body || {};
 
     if (!text || typeof text !== "string" || !text.trim()) {
-      return res.status(400).json({ error: "Missing required field: text" });
+      return sendJson(res, 400, { error: "Missing required field: text" });
     }
 
     const key = apiKey || process.env.SARVAM_API_KEY || DEFAULT_KEY;
     if (!key) {
-      return res.status(401).json({ error: "Missing Sarvam API Key" });
+      return sendJson(res, 401, { error: "Missing Sarvam API Key" });
     }
 
     // Call Sarvam AI TTS Endpoint
@@ -60,7 +85,7 @@ export default async function handler(req, res) {
 
     if (!sarvamRes.ok) {
       console.error("Sarvam TTS error:", data);
-      return res.status(sarvamRes.status).json({
+      return sendJson(res, sarvamRes.status, {
         error: data.error?.message || "Sarvam TTS generation failed",
         details: data
       });
@@ -69,10 +94,10 @@ export default async function handler(req, res) {
     const audioBase64 = data.audios && data.audios[0] ? data.audios[0] : null;
 
     if (!audioBase64) {
-      return res.status(500).json({ error: "No audio data received from Sarvam TTS" });
+      return sendJson(res, 500, { error: "No audio data received from Sarvam TTS" });
     }
 
-    return res.status(200).json({
+    return sendJson(res, 200, {
       success: true,
       speaker,
       target_language_code,
@@ -81,7 +106,7 @@ export default async function handler(req, res) {
     });
   } catch (error) {
     console.error("Synthesize error:", error);
-    return res.status(500).json({
+    return sendJson(res, 500, {
       error: "Internal server error during speech synthesis",
       message: error.message
     });

@@ -1,6 +1,31 @@
 // Vercel Serverless Function: Multi-Speaker Podcast Script Generator
 const DEFAULT_KEY = "sk_qaq8ho3m_ifhyEjbCvcWMUv8RgzKzk1qn";
 
+function sendJson(res, statusCode, data) {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "GET,OPTIONS,POST");
+  res.setHeader("Content-Type", "application/json");
+  if (typeof res.status === "function" && typeof res.json === "function") {
+    return res.status(statusCode).json(data);
+  }
+  res.statusCode = statusCode;
+  return res.end(JSON.stringify(data));
+}
+
+async function getBody(req) {
+  if (req.body && typeof req.body === "object") return req.body;
+  if (typeof req.body === "string") {
+    try { return JSON.parse(req.body); } catch (e) { return {}; }
+  }
+  return new Promise((resolve) => {
+    let bodyData = "";
+    req.on("data", chunk => { bodyData += chunk; });
+    req.on("end", () => {
+      try { resolve(JSON.parse(bodyData)); } catch (e) { resolve({}); }
+    });
+  });
+}
+
 const TOPIC_PRESETS = {
   "ai-india": {
     title: "The Indic AI Revolution: From Labs to 1.4 Billion People",
@@ -60,7 +85,6 @@ const TOPIC_PRESETS = {
 };
 
 export default async function handler(req, res) {
-  res.setHeader("Access-Control-Allow-Credentials", true);
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "GET,OPTIONS,POST");
   res.setHeader(
@@ -69,14 +93,16 @@ export default async function handler(req, res) {
   );
 
   if (req.method === "OPTIONS") {
-    return res.status(200).end();
+    res.statusCode = 200;
+    return res.end();
   }
 
   if (req.method !== "POST") {
-    return res.status(405).json({ error: "Method not allowed. Use POST." });
+    return sendJson(res, 405, { error: "Method not allowed. Use POST." });
   }
 
   try {
+    const body = await getBody(req);
     const {
       topic = "AI Revolution in India",
       language = "en-IN",
@@ -85,17 +111,16 @@ export default async function handler(req, res) {
       turns = 4,
       presetKey,
       apiKey
-    } = req.body || {};
+    } = body || {};
 
-    // 1. If preset provided, return rich preset tailored to selected speakers
     if (presetKey && TOPIC_PRESETS[presetKey]) {
       const preset = TOPIC_PRESETS[presetKey];
       const customDialogues = preset.dialogues.map((d, i) => ({
         speaker: i % 2 === 0 ? speaker1 : speaker2,
-        name: i % 2 === 0 ? "Host 1 (" + speaker1 + ")" : "Host 2 (" + speaker2 + ")",
+        name: i % 2 === 0 ? `Host 1 (${speaker1})` : `Host 2 (${speaker2})`,
         text: d.text
       }));
-      return res.status(200).json({
+      return sendJson(res, 200, {
         success: true,
         title: preset.title,
         tagline: preset.tagline,
@@ -105,29 +130,12 @@ export default async function handler(req, res) {
       });
     }
 
-    // 2. Try Sarvam LLM for custom topics
     const key = apiKey || process.env.SARVAM_API_KEY || DEFAULT_KEY;
     let generatedScript = null;
 
     if (key && topic && !TOPIC_PRESETS[presetKey]) {
       try {
-        const prompt = `You are a professional podcast script writer for an Indian conversational show called 'SarvamCast'.
-Write an engaging, witty, two-host podcast episode about: "${topic}".
-Language: ${language} (Keep language natural, conversational, using Indian cultural context).
-Host 1 name: ${speaker1}
-Host 2 name: ${speaker2}
-
-Return ONLY valid JSON with this format:
-{
-  "title": "Episode Title",
-  "tagline": "Catchy one-line summary",
-  "dialogues": [
-    {"speaker": "${speaker1}", "name": "Host 1", "text": "..."},
-    {"speaker": "${speaker2}", "name": "Host 2", "text": "..."},
-    {"speaker": "${speaker1}", "name": "Host 1", "text": "..."},
-    {"speaker": "${speaker2}", "name": "Host 2", "text": "..."}
-  ]
-}`;
+        const prompt = `You are a podcast creator for 'SarvamCast'. Write a 4-turn two-host conversational podcast about '${topic}' in language '${language}'. Host 1: ${speaker1}, Host 2: ${speaker2}. Return JSON: {"title":"...","tagline":"...","dialogues":[{"speaker":"${speaker1}","name":"Host 1","text":"..."},{"speaker":"${speaker2}","name":"Host 2","text":"..."}]}`;
 
         const llmRes = await fetch("https://api.sarvam.ai/v1/chat/completions", {
           method: "POST",
@@ -138,7 +146,7 @@ Return ONLY valid JSON with this format:
           body: JSON.stringify({
             model: "sarvam-105b",
             messages: [{ role: "user", content: prompt }],
-            max_tokens: 800
+            max_tokens: 600
           })
         });
 
@@ -151,11 +159,10 @@ Return ONLY valid JSON with this format:
           }
         }
       } catch (err) {
-        console.warn("Sarvam LLM call fallback:", err.message);
+        console.warn("LLM fallback", err.message);
       }
     }
 
-    // 3. Robust Dynamic Script Builder Fallback
     if (!generatedScript || !generatedScript.dialogues || generatedScript.dialogues.length === 0) {
       const cleanTopic = topic.trim();
       generatedScript = {
@@ -191,7 +198,7 @@ Return ONLY valid JSON with this format:
       };
     }
 
-    return res.status(200).json({
+    return sendJson(res, 200, {
       success: true,
       ...generatedScript,
       topic,
@@ -199,7 +206,7 @@ Return ONLY valid JSON with this format:
     });
   } catch (error) {
     console.error("Script generation error:", error);
-    return res.status(500).json({
+    return sendJson(res, 500, {
       error: "Failed to generate podcast script",
       message: error.message
     });

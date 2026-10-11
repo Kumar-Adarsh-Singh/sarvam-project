@@ -145,32 +145,70 @@ document.addEventListener('DOMContentLoaded', () => {
         );
 
         try {
-          const ttsRes = await fetch('/api/synthesize-speech', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              text: item.text,
-              speaker: item.speaker,
-              target_language_code: language,
-              model: 'bulbul:v3',
-              pace,
-              apiKey
-            })
-          });
+          let ttsAudioBase64 = null;
+          try {
+            const ttsRes = await fetch('/api/synthesize-speech', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                text: item.text,
+                speaker: item.speaker,
+                target_language_code: language,
+                model: 'bulbul:v3',
+                pace,
+                apiKey
+              })
+            });
 
-          if (ttsRes.ok) {
-            const ttsData = await ttsRes.json();
+            if (ttsRes.ok) {
+              const ttsData = await ttsRes.json();
+              if (ttsData.audio_base64) {
+                ttsAudioBase64 = ttsData.audio_base64;
+              }
+            }
+          } catch (serverErr) {
+            console.warn('Serverless TTS proxy failed, attempting direct Sarvam API call...', serverErr);
+          }
+
+          // Resilient client fallback directly to Sarvam API
+          if (!ttsAudioBase64 && apiKey) {
+            try {
+              const directRes = await fetch('https://api.sarvam.ai/text-to-speech', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'api-subscription-key': apiKey
+                },
+                body: JSON.stringify({
+                  inputs: [item.text],
+                  target_language_code: language,
+                  speaker: item.speaker,
+                  model: 'bulbul:v3',
+                  pace
+                })
+              });
+              if (directRes.ok) {
+                const directData = await directRes.json();
+                if (directData.audios && directData.audios[0]) {
+                  ttsAudioBase64 = directData.audios[0];
+                }
+              }
+            } catch (directErr) {
+              console.error('Direct Sarvam TTS call failed:', directErr);
+            }
+          }
+
+          if (ttsAudioBase64) {
             audioPlaylist.push({
               index: i,
               speaker: item.speaker,
               name: item.name,
               text: item.text,
-              audioBase64: ttsData.audio_base64
+              audioBase64: ttsAudioBase64
             });
-            // Update individual line card with play button
             enableLineAudio(i);
           } else {
-            console.warn(`TTS error on line ${i}:`, await ttsRes.text());
+            console.warn(`Could not synthesize audio for line ${i}`);
           }
         } catch (err) {
           console.error(`TTS failed for line ${i}:`, err);
