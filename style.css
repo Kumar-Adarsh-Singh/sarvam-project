@@ -1,0 +1,77 @@
+/* Custom Styles & Audio Visualizer Animations */
+
+.preset-btn {
+  background-color: rgba(15, 23, 42, 0.7);
+  border: 1px solid rgba(31, 41, 61, 0.9);
+  padding: 0.375rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  color: #94a3b8;
+  transition: all 0.2s ease;
+}
+
+.preset-btn:hover {
+  background-color: rgba(30, 41, 59, 0.9);
+  color: #f1f5f9;
+  border-color: #6366f1;
+}
+
+.preset-btn.active {
+  background: linear-gradient(135deg, rgba(255, 107, 53, 0.2), rgba(99, 102, 241, 0.25));
+  border-color: #FF6B35;
+  color: #ffffff;
+  font-weight: 600;
+  box-shadow: 0 0 12px rgba(255, 107, 53, 0.2);
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: rgba(11, 15, 25, 0.5);
+  border-radius: 8px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #1f293d;
+  border-radius: 8px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #334155;
+}
+
+/* Audio Waveform Bars */
+.waveform-bar {
+  flex: 1;
+  background: #334155;
+  border-radius: 2px;
+  min-height: 4px;
+  transition: height 0.15s ease, background-color 0.2s ease;
+}
+
+.waveform-bar.active {
+  background: linear-gradient(to top, #6366f1, #FF6B35);
+  animation: pulseHeight 0.6s infinite alternate ease-in-out;
+}
+
+@keyframes pulseHeight {
+  0% {
+    height: 20%;
+  }
+  100% {
+    height: 95%;
+  }
+}
+
+/* Dialogue Card Active Highlight */
+.dialogue-card {
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.dialogue-card.playing {
+  border-color: #6366f1 !important;
+  box-shadow: 0 0 20px rgba(99, 102, 241, 0.25);
+  transform: scale(1.01);
+}
