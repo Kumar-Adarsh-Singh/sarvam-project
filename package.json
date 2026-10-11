@@ -2,11 +2,10 @@
   "name": "sarvam-cast",
   "version": "1.0.0",
   "description": "AI-Powered Indic Podcast Generator using Sarvam AI Bulbul TTS and Indic Intelligence",
-  "main": "server.js",
   "type": "module",
   "scripts": {
-    "start": "node server.js",
-    "dev": "node server.js"
+    "start": "node dev-server.js",
+    "dev": "node dev-server.js"
   },
   "keywords": [
     "sarvam-ai",

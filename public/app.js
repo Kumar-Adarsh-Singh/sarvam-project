@@ -5,10 +5,69 @@ document.addEventListener('DOMContentLoaded', () => {
     window.lucide.createIcons();
   }
 
+  // Built-in Indic Topic Presets
+  const TOPIC_PRESETS = {
+    'ai-india': {
+      title: 'The Indic AI Revolution: From Labs to 1.4 Billion People',
+      tagline: 'How Indian AI is breaking language barriers and solving grassroot challenges.',
+      dialogues: [
+        { text: "Namaste everyone! Welcome back to another exciting episode of SarvamCast. Today, we're diving into the phenomenal rise of Indic AI." },
+        { text: "Namaste Rohan! It's incredible to see how voice models like Sarvam Bulbul and Saaras are transforming how India communicates across twenty-two languages." },
+        { text: "Exactly, Pooja. Think about farmers getting weather advisories in Kannada, or students learning calculus in Marathi with native speech synthesis." },
+        { text: "That is the real superpower of generative AI in India—technology that adapts to the people, not the other way around!" },
+        { text: "Well said! Stay tuned, folks, as we break down what this means for startups, developers, and the next billion digital citizens." }
+      ]
+    },
+    'bengaluru-tech': {
+      title: 'Bengaluru Hustle: Silk Board Jams to Unicorn Dreams',
+      tagline: "The unfiltered story of India's Silicon Valley.",
+      dialogues: [
+        { text: "Welcome to SarvamCast! Today we are talking about India's startup capital: Bengaluru." },
+        { text: "Where pitch decks are discussed over filter coffee in Koramangala and closed during Silk Board traffic jams!" },
+        { text: "Haha, totally! But jokes aside, the engineering talent and energy here are on par with Silicon Valley." },
+        { text: "Absolutely. Especially with deep-tech and hardware startups now sharing the spotlight alongside AI powerhouses." },
+        { text: "Bengaluru is truly where the future of digital India is being written, one line of code at a time." }
+      ]
+    },
+    'chandrayaan-space': {
+      title: 'Chandrayaan & Beyond: India\'s Leap into Deep Space',
+      tagline: 'Frugal engineering and astronomical ambition at ISRO.',
+      dialogues: [
+        { text: "Welcome listeners! Today's episode is a special tribute to the scientists and engineers at ISRO." },
+        { text: "Chandrayaan-3 landing on the south pole of the Moon was a defining historic moment for every single Indian." },
+        { text: "What always fascinates me is the frugal engineering—achieving interplanetary precision on a fraction of Hollywood budgets!" },
+        { text: "And now with Gaganyaan on the horizon, India is preparing to send astronauts into space on our own rockets." },
+        { text: "An inspiring journey that proves dedication and ingenuity know no gravitational limits." }
+      ]
+    },
+    'ipl-cricket': {
+      title: 'IPL, Moneyball & the Data Revolution in Indian Cricket',
+      tagline: 'How algorithms, biomechanics, and analytics are redefining the game.',
+      dialogues: [
+        { text: "Welcome cricket fans to SarvamCast! Today we look at cricket through the lens of modern tech." },
+        { text: "Hey Rohan! Cricket isn't just about instincts anymore; it is driven by real-time analytics and predictive modeling." },
+        { text: "Right! Every bowler's release point and every batsman's wagon wheel are broken down by AI algorithms before the next ball is bowled." },
+        { text: "It has turned the IPL into an incredible tactical chess match played at 150 kilometers per hour." },
+        { text: "The thrill of sports combined with cutting-edge tech—you can't ask for better entertainment!" }
+      ]
+    },
+    'indian-street-food': {
+      title: 'Flavors of Bharat: From Delhi Chaat to Madurai Jigarthanda',
+      tagline: 'A culinary journey exploring the soul of Indian streets.',
+      dialogues: [
+        { text: "Welcome foodie friends to today's mouth-watering episode of SarvamCast!" },
+        { text: "Rohan, you are making me hungry already! Indian street food is pure art and culture served on a leaf." },
+        { text: "From the spicy Pani Puri in Mumbai to steaming hot Idlis in Bengaluru and fragrant Biryanis in Hyderabad." },
+        { text: "Every state, every city, and practically every street corner has a signature dish with generations of history." },
+        { text: "So grab a cup of hot chai and join us as we celebrate the culinary tapestry of India!" }
+      ]
+    }
+  };
+
   // State
   let currentPreset = 'ai-india';
   let currentEpisode = null;
-  let audioPlaylist = []; // Array of audio objects per dialogue
+  let audioPlaylist = [];
   let currentPlayingIndex = -1;
   let isMasterPlaying = false;
   let apiKey = localStorage.getItem('SARVAM_API_KEY') || 'sk_qaq8ho3m_ifhyEjbCvcWMUv8RgzKzk1qn';
@@ -37,7 +96,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const transcriptContainer = document.getElementById('transcript-container');
   const btnExportScript = document.getElementById('btn-export-script');
   const btnDownloadAll = document.getElementById('btn-download-all');
-
   const audioEngine = document.getElementById('audio-engine');
 
   // Modal elements
@@ -49,7 +107,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   modalApiKeyInput.value = apiKey;
 
-  // Build 24 waveform bars
+  // Build waveform visualizer bars
   const NUM_BARS = 32;
   waveformBars.innerHTML = '';
   for (let i = 0; i < NUM_BARS; i++) {
@@ -66,6 +124,7 @@ document.addEventListener('DOMContentLoaded', () => {
       btn.classList.add('active');
       currentPreset = btn.getAttribute('data-preset');
       topicInput.value = '';
+      loadPreset(currentPreset);
     });
   });
 
@@ -88,6 +147,71 @@ document.addEventListener('DOMContentLoaded', () => {
     apiModal.classList.add('hidden');
   });
 
+  // Script Generator Helper
+  function generateEpisodeScript(topic, presetKey, spk1, spk2, lang) {
+    if (!topic && presetKey && TOPIC_PRESETS[presetKey]) {
+      const p = TOPIC_PRESETS[presetKey];
+      return {
+        title: p.title,
+        tagline: p.tagline,
+        topic: presetKey,
+        language: lang,
+        dialogues: p.dialogues.map((d, i) => ({
+          speaker: i % 2 === 0 ? spk1 : spk2,
+          name: i % 2 === 0 ? `Host 1 (${spk1})` : `Host 2 (${spk2})`,
+          text: d.text
+        }))
+      };
+    }
+
+    const clean = topic ? topic.trim() : 'AI in Bharat';
+    return {
+      title: `Deep Dive: ${clean}`,
+      tagline: `An exciting conversation exploring ${clean} from every perspective.`,
+      topic: clean,
+      language: lang,
+      dialogues: [
+        {
+          speaker: spk1,
+          name: `Host 1 (${spk1})`,
+          text: `Namaste and welcome to SarvamCast! Today we have an absolutely thrilling topic to discuss: ${clean}.`
+        },
+        {
+          speaker: spk2,
+          name: `Host 2 (${spk2})`,
+          text: `Hey everyone! I have been looking forward to this discussion all week. ${clean} is making such huge waves across India right now.`
+        },
+        {
+          speaker: spk1,
+          name: `Host 1 (${spk1})`,
+          text: `What makes it truly special is how rapidly innovators are pushing boundaries and creating local impact.`
+        },
+        {
+          speaker: spk2,
+          name: `Host 2 (${spk2})`,
+          text: `Completely agree! The momentum is undeniable, and the opportunities ahead for our generation are limitless.`
+        },
+        {
+          speaker: spk1,
+          name: `Host 1 (${spk1})`,
+          text: `Thank you all for tuning in to SarvamCast. Keep listening, keep learning, and stay curious until our next episode!`
+        }
+      ]
+    };
+  }
+
+  // Load Preset
+  function loadPreset(key) {
+    const spk1 = selectSpeaker1.value;
+    const spk2 = selectSpeaker2.value;
+    const lang = selectLanguage.value;
+    currentEpisode = generateEpisodeScript('', key, spk1, spk2, lang);
+    playerEpisodeTitle.textContent = currentEpisode.title;
+    playerEpisodeTagline.textContent = currentEpisode.tagline;
+    renderTranscript(currentEpisode.dialogues);
+    audioPlaylist = [];
+  }
+
   // Generate Podcast Workflow
   btnGenerate.addEventListener('click', async () => {
     const customTopic = topicInput.value.trim();
@@ -102,31 +226,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     try {
       // Step 1: Generate Script
-      updateProgress(20, 'Writing multi-speaker Indic dialogue script...');
+      updateProgress(20, 'Drafting multi-speaker Indic dialogue script...');
+      currentEpisode = generateEpisodeScript(customTopic, customTopic ? null : currentPreset, speaker1, speaker2, language);
 
-      const scriptPayload = {
-        topic: customTopic || undefined,
-        presetKey: customTopic ? undefined : currentPreset,
-        language,
-        speaker1,
-        speaker2,
-        apiKey
-      };
-
-      const scriptRes = await fetch('/api/generate-script', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(scriptPayload)
-      });
-
-      if (!scriptRes.ok) {
-        throw new Error('Failed to generate script from server');
-      }
-
-      const scriptData = await scriptRes.json();
-      currentEpisode = scriptData;
-
-      // Update UI Header
       playerEpisodeTitle.textContent = currentEpisode.title;
       playerEpisodeTagline.textContent = currentEpisode.tagline;
 
@@ -138,77 +240,44 @@ document.addEventListener('DOMContentLoaded', () => {
       const totalLines = dialogues.length;
       for (let i = 0; i < totalLines; i++) {
         const item = dialogues[i];
-        const stepPct = Math.round(30 + ((i + 1) / totalLines) * 65);
+        const stepPct = Math.round(25 + ((i + 1) / totalLines) * 70);
         updateProgress(
           stepPct,
           `Synthesizing ${item.name} via Sarvam Bulbul TTS (${i + 1}/${totalLines})...`
         );
 
         try {
-          let ttsAudioBase64 = null;
-          try {
-            const ttsRes = await fetch('/api/synthesize-speech', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                text: item.text,
-                speaker: item.speaker,
-                target_language_code: language,
-                model: 'bulbul:v3',
-                pace,
-                apiKey
-              })
-            });
-
-            if (ttsRes.ok) {
-              const ttsData = await ttsRes.json();
-              if (ttsData.audio_base64) {
-                ttsAudioBase64 = ttsData.audio_base64;
-              }
-            }
-          } catch (serverErr) {
-            console.warn('Serverless TTS proxy failed, attempting direct Sarvam API call...', serverErr);
-          }
-
-          // Resilient client fallback directly to Sarvam API
-          if (!ttsAudioBase64 && apiKey) {
-            try {
-              const directRes = await fetch('https://api.sarvam.ai/text-to-speech', {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                  'api-subscription-key': apiKey
-                },
-                body: JSON.stringify({
-                  inputs: [item.text],
-                  target_language_code: language,
-                  speaker: item.speaker,
-                  model: 'bulbul:v3',
-                  pace
-                })
-              });
-              if (directRes.ok) {
-                const directData = await directRes.json();
-                if (directData.audios && directData.audios[0]) {
-                  ttsAudioBase64 = directData.audios[0];
-                }
-              }
-            } catch (directErr) {
-              console.error('Direct Sarvam TTS call failed:', directErr);
-            }
-          }
-
-          if (ttsAudioBase64) {
-            audioPlaylist.push({
-              index: i,
+          // Direct Sarvam AI Bulbul TTS API call
+          const res = await fetch('https://api.sarvam.ai/text-to-speech', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'api-subscription-key': apiKey
+            },
+            body: JSON.stringify({
+              inputs: [item.text],
+              target_language_code: language,
               speaker: item.speaker,
-              name: item.name,
-              text: item.text,
-              audioBase64: ttsAudioBase64
-            });
-            enableLineAudio(i);
+              model: 'bulbul:v3',
+              pace
+            })
+          });
+
+          if (res.ok) {
+            const data = await res.json();
+            if (data.audios && data.audios[0]) {
+              audioPlaylist.push({
+                index: i,
+                speaker: item.speaker,
+                name: item.name,
+                text: item.text,
+                audioBase64: data.audios[0]
+              });
+              enableLineAudio(i);
+            }
           } else {
-            console.warn(`Could not synthesize audio for line ${i}`);
+            const errText = await res.text();
+            console.warn(`TTS API response (${res.status}):`, errText);
           }
         } catch (err) {
           console.error(`TTS failed for line ${i}:`, err);
@@ -218,9 +287,8 @@ document.addEventListener('DOMContentLoaded', () => {
       updateProgress(100, 'Podcast production complete! Ready to play.');
       setTimeout(() => {
         progressContainer.classList.add('hidden');
-      }, 1500);
+      }, 1200);
 
-      // Automatically cue line 0
       currentPlayingIndex = 0;
       updateSegmentIndicator(0);
 
@@ -239,7 +307,7 @@ document.addEventListener('DOMContentLoaded', () => {
     progressStatusText.textContent = message;
   }
 
-  // Render Transcript Bubbles
+  // Render Transcript
   function renderTranscript(dialogues) {
     transcriptContainer.innerHTML = '';
     dialogues.forEach((d, index) => {
@@ -310,7 +378,7 @@ document.addEventListener('DOMContentLoaded', () => {
     updateSegmentIndicator(index);
   }
 
-  // Continuous Master Playback
+  // Master Playback Button
   btnMasterPlay.addEventListener('click', () => {
     if (!audioPlaylist.length) {
       alert('Please click "Produce Podcast Episode" first!');
@@ -332,7 +400,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function playSequencedTurn(index) {
     if (index >= audioPlaylist.length) {
-      // Finished all turns
       isMasterPlaying = false;
       updateMasterPlayUI(false);
       setWaveformActive(false);
@@ -355,7 +422,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     audioEngine.onended = () => {
       if (isMasterPlaying) {
-        // Automatically proceed to next turn after 350ms natural pause
         setTimeout(() => {
           if (isMasterPlaying) {
             playSequencedTurn(index + 1);
@@ -413,7 +479,6 @@ document.addEventListener('DOMContentLoaded', () => {
     playerSegmentIndicator.textContent = `Turn ${index + 1} / ${total}`;
   }
 
-  // Audio time update
   audioEngine.addEventListener('timeupdate', () => {
     const cur = Math.floor(audioEngine.currentTime);
     const min = Math.floor(cur / 60);
@@ -460,22 +525,6 @@ document.addEventListener('DOMContentLoaded', () => {
     URL.revokeObjectURL(url);
   });
 
-  // Load Initial Preset
-  (async () => {
-    try {
-      const res = await fetch('/api/generate-script', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ presetKey: 'ai-india' })
-      });
-      if (res.ok) {
-        currentEpisode = await res.json();
-        playerEpisodeTitle.textContent = currentEpisode.title;
-        playerEpisodeTagline.textContent = currentEpisode.tagline;
-        renderTranscript(currentEpisode.dialogues);
-      }
-    } catch (e) {
-      console.warn('Initial load fallback', e);
-    }
-  })();
+  // Initial load
+  loadPreset('ai-india');
 });
