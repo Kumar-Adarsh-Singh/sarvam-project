@@ -1,0 +1,21 @@
+{
+  "name": "sarvam-cast",
+  "version": "1.0.0",
+  "description": "AI-Powered Indic Podcast Generator using Sarvam AI Bulbul TTS",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "express": "^4.22.3"
+  },
+  "keywords": [
+    "sarvam-ai",
+    "indic-ai",
+    "bulbul-tts",
+    "podcast-generator"
+  ],
+  "author": "Kumar Adarsh Singh",
+  "license": "MIT"
+}
